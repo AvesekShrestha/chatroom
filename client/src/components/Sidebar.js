@@ -30,16 +30,16 @@ export default function Sidebar() {
                         </Link>
                     </li>
                     <li>
-                        <a href="/sidebar" className="nav-link link-dark">
+                        <Link to={"/products"} className="nav-link link-dark">
                             <svg className="bi me-2" width="16" height="16"><use xlinkHref="/" /></svg>
                             Products
-                        </a>
+                        </Link>
                     </li>
                     <li>
-                        <a href="/sidebar" className="nav-link link-dark">
+                        <Link to={"/customers" }className="nav-link link-dark">
                             <svg className="bi me-2" width="16" height="16"><use xlinkHref="/" /></svg>
                             Customers
-                        </a>
+                        </Link>
                     </li>
                 </ul>
                 <hr />
