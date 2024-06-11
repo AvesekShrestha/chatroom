@@ -7,7 +7,7 @@ const Wrapper = ({ children }) => {
     const shouldShowNavbar = !['/login', '/register'].includes(location.pathname);
 
     return (
-        <div className="d-flex flex-column justify-content-center align-items-center">
+        <div className="d-flex flex-column">
             {shouldShowNavbar && (
                 <div>
                     <Navbar />

@@ -1,122 +1,108 @@
 import React, { useEffect, useState } from "react";
-import io from "socket.io-client";
 import axios from "axios";
-import { useSelector } from "react-redux"
 import { jwtDecode } from "jwt-decode";
+import ModalButton from "../component/Model";
+import SearchCanvas from "../component/Offcanvas";
+import MessageArea from "../component/MessageArea";
+import { FaUserCircle } from "react-icons/fa";
 
 const Message = () => {
-    const [socket, setSocket] = useState(null);
-    const [message, setMessage] = useState("");
-    const [users, setUsers] = useState([]);
-    const [isSelected, setIsSelected] = useState(false)
-    const [selectedUser, setSelectedUser] = useState(null)
-    const user = useSelector((state) => state.user.userData)
+  const [chats, setChats] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [chatSelected, setChatSelected] = useState(false);
+  const [selectedChat, setSelectedChat] = useState({});
+  const [messages, setMessages] = useState([]);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [token, setToken] = useState(null);
 
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    setToken(token);
+    const user = jwtDecode(token);
+    setCurrentUser(user);
 
-    useEffect(() => {
-        const newSocket = io("http://localhost:5000");
-        setSocket(newSocket);
-
-        const token = localStorage.getItem("token")
-        const user = jwtDecode(token)
-
-        newSocket.emit("addUser", user);
-
-        return () => {
-            if (newSocket) {
-                newSocket.disconnect();
-            }
-        };
-    }, []);
-
-    useEffect(() => {
-        if (socket) {
-            socket.on("getUsers", async (usersList) => {
-                const fetchedUsers = await Promise.all(usersList.map(async (element) => {
-                    const response = await axios.get(`http://localhost:8000/api/v1/user/${element.userId}`);
-                    return response.data[0];
-                }));
-
-                const filterdUsers = fetchedUsers.filter((element) => element._id !== user.id)
-                setUsers(filterdUsers);
-            });
-
-            return () => {
-                socket.off("getUsers");
-            };
-        }
-    }, [socket]);
-
-    useEffect(() => {
-        if (socket) {
-            const handleMessage = (data) => {
-                console.log(data);
-            };
-            socket.on("message", handleMessage);
-            return () => {
-                socket.off("message", handleMessage);
-            };
-        }
-    }, [socket]);
-
-    const handleOnSend = () => {
-        if (socket && socket.connected) {
-            socket.emit("send message", { to: selectedUser, message });
-            setMessage("");
-        } else {
-            console.error("Socket is not connected");
-        }
+    const fetchChats = async () => {
+      const response = await axios.get(
+        `http://localhost:8000/api/v1/fetchRelatedChats/${user.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setChats(response.data);
     };
+    fetchChats();
+  }, []);
 
-    const handleOnSelect = (element) => {
-        setIsSelected(true);
-        setSelectedUser(element._id);
+  const handleOnSelectChat = async (chat) => {
+    setChatSelected(true);
+    setSelectedChat(chat);
+
+    try {
+      const fetchMessages = async () => {
+        const response = await axios.get(
+          `http://localhost:8000/api/v1/fetchMessages/${chat._id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setMessages(response.data);
+        if (response.statusText !== "OK") setError(response.data.message);
+      };
+      fetchMessages();
+    } catch (error) {
+      setError("Unable to load messages");
     }
+  };
 
-    return (
-        <>
-            <div style={{ width: "100vw" }} className="d-flex justify-content-center align-items-center flex-column">
-                <div className="d-flex flex-row justify-content-between" style={{ height: "90vh", width: "100vw" }}>
-                    <div className="d-flex flex-column justify-content-between">
-                        <div>
-                            This is for chat section
-                        </div>
-                        {isSelected &&
+  const updateChats = (newChat) => {
+    setChats(prevChat => [...prevChat, newChat])
+    setChatSelected(true)
+    setSelectedChat(newChat)
+    handleOnSelectChat(newChat)
+  }
 
-                            <div className="d-flex flex-row justify-content-around" style={{ width: "80vw" }}>
-                                <div>
-                                    <label htmlFor="message">Message:</label>
-                                    <input
-                                        type="text"
-                                        style={{ width: "60vw", height: "50px" }}
-                                        className="fs-4"
-                                        value={message}
-                                        onChange={(e) => setMessage(e.target.value)}
-                                    />
-                                </div>
-                                <div className="d-flex align-items-center">
-
-                                    <button className="btn btn-primary" style={{ width: "130px" }} onClick={handleOnSend}>
-                                        Send
-                                    </button>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                    <div className="d-flex flex-column rounded" style={{ width: "20vw", border: "1px solid grey" }}>
-                        {
-                            users && users.map((element, index) => (
-
-                                <div key={index} className="bg-primary mb-3 text-light d-flex justify-content-center align-items-center" style={{ height: "50px", width: "inherit", cursor: "pointer" }} onClick={() => handleOnSelect(element)}>
-                                    <p>{element.userName}</p>
-                                </div>
-                            ))
-                        }
-                    </div>
-                </div>
+  return (
+    <>
+      <div className="container-fluid" style={{ height: "90vh", width: "100vw" }}>
+        <div className="row h-100 no-gutters">
+          <div className="col-3 p-0" style={{ backgroundColor: "#F8F9FA" }}>
+            <div className="d-flex flex-row justify-content-between align-items-center">
+              <h3>Chats</h3>
+              <ModalButton chats={chats} />
             </div>
-        </>
-    );
+            <div className="w-75">
+              <SearchCanvas chats={chats} updateChats={updateChats} />
+            </div>
+            <hr />
+            <div className="d-flex flex-column " style={{ height: "80vh", overflowY: "scroll" }}>
+              {chats.length > 0 &&
+                chats.map((chat) => {
+                  return (
+                    <div
+                      className="w-100 d-flex align-items-center ps-3"
+                      style={{
+                        backgroundColor: "#4F46E5",
+                        height: "65px",
+                        cursor: "pointer",
+                        border: "1px solid #D1D5DB",
+                      }}
+                      key={chat._id}
+                      onClick={() => handleOnSelectChat(chat)}
+                    >
+                      <span className="me-5">
+                        <FaUserCircle size={50} color="white" />
+                      </span>
+
+                      <p key={chat._id} className="fs-5 text-light">{!chat.isGroupChat ? chat.users.filter(user => user._id !== currentUser.id)[0].userName : chat.chatName}</p>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+          <div className="col-9 p-0" style={{ backgroundColor: "#E0E7FF" }}>
+            {chatSelected && <MessageArea chat={selectedChat} messages={messages} />}
+          </div>
+        </div>
+      </div>
+    </>
+  );
 };
 
 export default Message;
