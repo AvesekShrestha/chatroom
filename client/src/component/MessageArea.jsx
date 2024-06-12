@@ -5,7 +5,7 @@ import { BiLink } from "react-icons/bi";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 
-const MessageArea = ({ chat, messages }) => {
+const MessageArea = ({ chat, messages, socket, setMessages }) => {
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -17,6 +17,7 @@ const MessageArea = ({ chat, messages }) => {
         const token = localStorage.getItem("token");
         setCurrentUser(jwtDecode(token));
         setToken(token);
+
     }, []);
 
     useEffect(() => {
@@ -30,19 +31,31 @@ const MessageArea = ({ chat, messages }) => {
     };
 
     const handleOnSend = async () => {
+        let response;
         try {
-            const response = await axios.post(
+            response = await axios.post(
                 `http://localhost:8000/api/v1/sendMessage/${chat._id}`,
                 { content: message },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             if (response.statusText !== "OK") setError(response.data.message);
-            else setSuccess("Message sent");
+            else {
+                setSuccess("Message sent");
+                setMessages(prevMessage => [...prevMessage, response.data])
+            }
+
             setMessage("");
         } catch (error) {
             setError("Error on sending message");
         }
+
+        socket.emit("new message", response.data);
+
     };
+
+    const handleOnKeyDown = (event) => {
+        if (event.key === "Enter") handleOnSend()
+    }
 
     return (
         <>
@@ -53,11 +66,15 @@ const MessageArea = ({ chat, messages }) => {
                         <FaUserCircle color="white" size={50} />
                     </div>
                     <div className="ms-4 d-flex flex-column justify-content-center align-items-center">
-                        <h4 className="text-dark mt-1 mb-0">{chat.chatName}</h4>
+                        <h4 className="text-dark mt-1 mb-0">{chat.isGroupChat ? chat.chatName : chat.users.filter(user => user._id !== currentUser?.id)[0].userName}</h4>
+                        {/* <h4 className="text-dark mt-1 mb-0">{chat.chatName}</h4> */}
                         <div className="d-flex flex-row">
-                            {chat.users.map((user) => (
-                                <p key={user._id}>{`${user.userName}, `}</p>
-                            ))}
+                            {
+                                chat.users.map((user) => (
+                                    <p key={user._id}>{`${user.userName}, `}</p>
+
+                                ))
+                            }
                         </div>
                     </div>
                 </div>
@@ -67,11 +84,19 @@ const MessageArea = ({ chat, messages }) => {
                     {messages.length > 0 ? (
                         messages.map((message) => (
                             <div
-                                className={`bg-primary text-light text-wrap rounded mb-1 p-2 ${message.sender._id === currentUser.id ? "align-self-end" : ""}`}
-                                style={{ maxWidth: "350px", width: "auto", wordBreak: "break-word" }}
+                                className={`d-flex ${message.sender._id === currentUser.id ? "justify-content-end" : "justify-content-start"} mb-1`}
                                 key={message._id}
                             >
-                                <p className="m-0">{message.content}</p>
+                                <div
+                                    className="bg-primary text-light text-wrap rounded p-2"
+                                    style={{
+                                        maxWidth: "350px",
+                                        width: "fit-content",
+                                        wordBreak: "break-word"
+                                    }}
+                                >
+                                    <p className="m-0">{message.content}</p>
+                                </div>
                             </div>
                         ))
                     ) : (
@@ -104,6 +129,7 @@ const MessageArea = ({ chat, messages }) => {
                                 placeholder="Message"
                                 onChange={(e) => setMessage(e.target.value)}
                                 value={message}
+                                onKeyDown={handleOnKeyDown}
                             />
 
                             <InputGroup.Text id="inputGroup-sizing-md" style={{ cursor: "pointer" }} onClick={handleOnSend}>
@@ -118,4 +144,3 @@ const MessageArea = ({ chat, messages }) => {
 };
 
 export default MessageArea;
-

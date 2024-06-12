@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Chat = require("../models/chat");
+const User = require("../models/users");
 
 router.post("/createChat", async (req, res) => {
   try {
@@ -161,6 +162,32 @@ router.get("/fetchRelatedChats/:userId", async (req, res) => {
     else return res.status(200).json(relatedChats);
   } catch (error) {
     return res.status(400).json({ message: "Error" });
+  }
+});
+
+router.get("/fetchRelatedUsers/:userId", async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    const relatedChats = await Chat.find({ isGroupChat: false, users: userId });
+    const allChatUsers = relatedChats.reduce(
+      (acc, chat) => [...acc, ...chat.users],
+      []
+    );
+
+    const relatedUserIds = allChatUsers.filter(
+      (user) => user._id.toString() !== req.user.id.toString()
+    );
+
+    const relatedUsers = await User.find({
+      _id: { $in: relatedUserIds },
+    }).select("-password");
+
+    res.status(200).json(relatedUsers);
+  } catch (error) {
+    return res
+      .status(400)
+      .json({ message: "Error while fetching related users" });
   }
 });
 

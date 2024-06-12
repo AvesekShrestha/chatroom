@@ -5,7 +5,7 @@ import { FaSearch, FaUserCircle } from 'react-icons/fa';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
-function SearchCanvas({ chats, updateChats }) {
+function SearchCanvas({ chats, updatechats }) {
     const [show, setShow] = useState(false);
     const [allUsers, setAllUsers] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
@@ -32,16 +32,12 @@ function SearchCanvas({ chats, updateChats }) {
     }, []);
 
     useEffect(() => {
-        // Flatten the array of users from all chat data
-        const allChatUsers = chats.reduce((acc, chat) => [...acc, ...chat.users], []);
+        const allChatUsers = chats.filter(chat => !chat.isGroupChat).reduce((acc, chat) => [...acc, ...chat.users], []);
 
-        // Get the array of unique user ids present in all chat's users
         const allChatUserIds = Array.from(new Set(allChatUsers.map(user => user._id)));
 
-        // Filter out users who are not present in any of the chat's users
         const unmatchedUsers = allUsers.filter(user => !allChatUserIds.includes(user._id)).filter(user => user._id !== currentUser.id);
 
-        // Filter matched users based on the search query
         const matchedUsers = unmatchedUsers.filter(user => user.userName.toLowerCase().includes(searchQuery.toLowerCase()));
 
         setSearchedUsers(matchedUsers);
@@ -65,7 +61,7 @@ function SearchCanvas({ chats, updateChats }) {
                 setError(`Cannot send message to ${user[0].userName}`);
             } else {
                 handleClose()
-                updateChats(response.data);
+                updatechats(response.data);
             }
         } catch (error) {
             setError(`Cannot send message to ${user[0].chatName}`);
