@@ -152,10 +152,20 @@ router.put("/renameChat", async (req, res) => {
 router.get("/fetchRelatedChats/:userId", async (req, res) => {
   const userId = req.params.userId;
   try {
-    const relatedChats = await Chat.find({ users: userId }).populate({
-      path: "users",
-      select: "userName email _id",
-    });
+    const relatedChats = await Chat.find({ users: userId })
+      .populate({
+        path: "users",
+        select: "userName email _id",
+      })
+      .populate({
+        path: "latestMessage",
+        select: "sender content",
+        populate: {
+          path: "sender",
+          model: "User",
+          select: "userName _id email",
+        },
+      });
 
     if (!relatedChats)
       return res.status(404).json({ message: "Related chats not found" });

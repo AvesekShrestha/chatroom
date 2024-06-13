@@ -60,6 +60,12 @@ router.post("/sendMessage/:id", async (req, res) => {
     const newMessage = new Message({ sender: req.user.id, content, chatId });
     await newMessage.save();
 
+    await Chat.findByIdAndUpdate(
+      chatId,
+      { latestMessage: newMessage },
+      { new: true }
+    );
+
     const populatedMessage = await Message.findById(newMessage._id)
       .populate({
         path: "chatId",

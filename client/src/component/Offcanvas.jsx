@@ -4,8 +4,9 @@ import { InputGroup, Form, Button, Alert } from 'react-bootstrap';
 import { FaSearch, FaUserCircle } from 'react-icons/fa';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
+// import { useSocket } from './SocketProvider';
 
-function SearchCanvas({ chats, updatechats }) {
+function SearchCanvas({ chats, updatechats, socket }) {
     const [show, setShow] = useState(false);
     const [allUsers, setAllUsers] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
@@ -13,6 +14,7 @@ function SearchCanvas({ chats, updatechats }) {
     const [error, setError] = useState("");
     const [token, setToken] = useState(null)
     const [currentUser, setCurrentUser] = useState(null);
+    // const socket = useSocket()
 
 
     const handleClose = () => setShow(false);
@@ -43,7 +45,16 @@ function SearchCanvas({ chats, updatechats }) {
         setSearchedUsers(matchedUsers);
     }, [searchQuery, allUsers, chats]);
 
+    useEffect(() => {
+        const handleNewAccount = (user) => {
+            setAllUsers(prevUsers => [...prevUsers, user]);
+        };
+        socket?.on("new account", handleNewAccount);
 
+        return () => {
+            socket?.off("new account", handleNewAccount);
+        };
+    }, [socket]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -52,6 +63,7 @@ function SearchCanvas({ chats, updatechats }) {
 
         return () => clearTimeout(timer);
     }, [error]);
+
 
 
     const handleOnSelectUser = async (user) => {

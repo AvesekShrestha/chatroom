@@ -23,25 +23,6 @@ router.post("/register", async (req, res) => {
   }
 });
 
-router.get("/user/:userId", requireAuth, async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    const user = await User.find({ _id: userId });
-    res.status(200).json(user);
-  } catch (err) {
-    return res.status(400).json({ message: "Error while reteriving data" });
-  }
-});
-
-router.get("/users", requireAuth, async (req, res) => {
-  try {
-    const users = await User.find();
-    res.status(200).json(users);
-  } catch (error) {
-    return res.status(400).json({ message: "Error while fetching users data" });
-  }
-});
-
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -59,6 +40,25 @@ router.post("/login", async (req, res) => {
       .status(200)
       .json({ token, user, message: "Logged in successfully" });
   } else return res.status(400).json({ message: "Login failed" });
+});
+
+router.get("/user/:userId", requireAuth, async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const user = await User.find({ _id: userId });
+    res.status(200).json(user);
+  } catch (err) {
+    return res.status(400).json({ message: "Error while reteriving data" });
+  }
+});
+
+router.get("/users", requireAuth, async (req, res) => {
+  try {
+    const users = await User.find();
+    res.status(200).json(users);
+  } catch (error) {
+    return res.status(400).json({ message: "Error while fetching users data" });
+  }
 });
 
 module.exports = router;

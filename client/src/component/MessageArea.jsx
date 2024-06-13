@@ -4,20 +4,21 @@ import { FaArrowAltCircleRight, FaPhotoVideo, FaMicrophone, FaUserCircle } from 
 import { BiLink } from "react-icons/bi";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
+// import { useSocket } from "./SocketProvider";
 
-const MessageArea = ({ chat, messages, socket, setMessages }) => {
+const MessageArea = ({ chat, messages, setMessages, updateLatestMessage, socket }) => {
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [token, setToken] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
     const messageEndRef = useRef(null);
+    // const socket = useSocket()
 
     useEffect(() => {
         const token = localStorage.getItem("token");
         setCurrentUser(jwtDecode(token));
         setToken(token);
-
     }, []);
 
     useEffect(() => {
@@ -41,21 +42,20 @@ const MessageArea = ({ chat, messages, socket, setMessages }) => {
             if (response.statusText !== "OK") setError(response.data.message);
             else {
                 setSuccess("Message sent");
-                setMessages(prevMessage => [...prevMessage, response.data])
+                const newMessage = response.data;
+                setMessages((prevMessages) => [...prevMessages, newMessage]);
+                updateLatestMessage(newMessage);  // Update the latest message in the chat list
             }
-
             setMessage("");
         } catch (error) {
             setError("Error on sending message");
         }
-
         socket.emit("new message", response.data);
-
     };
 
     const handleOnKeyDown = (event) => {
-        if (event.key === "Enter") handleOnSend()
-    }
+        if (event.key === "Enter") handleOnSend();
+    };
 
     return (
         <>
@@ -67,18 +67,15 @@ const MessageArea = ({ chat, messages, socket, setMessages }) => {
                     </div>
                     <div className="ms-4 d-flex flex-column justify-content-center align-items-center">
                         <h4 className="text-dark mt-1 mb-0">{chat.isGroupChat ? chat.chatName : chat.users.filter(user => user._id !== currentUser?.id)[0].userName}</h4>
-                        {/* <h4 className="text-dark mt-1 mb-0">{chat.chatName}</h4> */}
                         <div className="d-flex flex-row">
                             {
                                 chat.users.map((user) => (
                                     <p key={user._id}>{`${user.userName}, `}</p>
-
                                 ))
                             }
                         </div>
                     </div>
                 </div>
-
                 {/* message area */}
                 <div className="container d-flex flex-column" style={{ height: "80vh", overflowY: "scroll", paddingBottom: "30px", marginTop: "10px" }}>
                     {messages.length > 0 ? (
@@ -106,7 +103,6 @@ const MessageArea = ({ chat, messages, socket, setMessages }) => {
                     )}
                     <div ref={messageEndRef}></div>
                 </div>
-
                 {/* text area */}
                 <div className="d-flex flex-row position-fixed bottom-0 bg-white" style={{ width: "100vw" }}>
                     <div className="ms-5" style={{ width: "50vw" }}>
@@ -114,15 +110,12 @@ const MessageArea = ({ chat, messages, socket, setMessages }) => {
                             <InputGroup.Text id="inputGroup-sizing-sm">
                                 <FaMicrophone />
                             </InputGroup.Text>
-
                             <InputGroup.Text id="inputGroup-sizing-sm" style={{ cursor: "pointer" }}>
                                 <BiLink />
                             </InputGroup.Text>
-
                             <InputGroup.Text id="inputGroup-sizing-sm" style={{ cursor: "pointer" }}>
                                 <FaPhotoVideo />
                             </InputGroup.Text>
-
                             <Form.Control
                                 aria-label="Medium"
                                 aria-describedby="inputGroup-sizing-md"
@@ -131,7 +124,6 @@ const MessageArea = ({ chat, messages, socket, setMessages }) => {
                                 value={message}
                                 onKeyDown={handleOnKeyDown}
                             />
-
                             <InputGroup.Text id="inputGroup-sizing-md" style={{ cursor: "pointer" }} onClick={handleOnSend}>
                                 <FaArrowAltCircleRight />
                             </InputGroup.Text>
