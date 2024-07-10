@@ -19,11 +19,52 @@ io.on("connection", (socket) => {
   socket.on("join chat", (chatId) => {
     socket.join(chatId);
   });
+
+  socket.on("create group", (data) => {
+    const userList = data.users;
+
+    userList.map((user) => {
+      if (user._id === data.groupAdmin) return;
+      socket.to(user._id).emit("group created", data);
+    });
+  });
+
+  socket.on("chat request", (data) => {
+    const { chat, currentUser } = data;
+    const userList = chat.users;
+
+    userList.map((user) => {
+      if (user._id === currentUser.id) return;
+      socket.to(user._id).emit("chat request response", chat);
+    });
+  });
+
   socket.on("new message", (newMessageReceived) => {
     const userList = newMessageReceived.chatId.users;
     userList.map((user) => {
       if (user._id === newMessageReceived.sender) return;
       socket.in(user._id).emit("message received", newMessageReceived);
+    });
+  });
+
+  socket.on("call user", (data) => {
+    const { chat, currentUser, offer } = data;
+    const userList = chat.users;
+    userList.map((user) => {
+      if (user._id === currentUser.id) return;
+      socket
+        .in(user._id)
+        .emit("incomming call", { chat, from: currentUser, offer });
+    });
+  });
+
+  socket.on("call accepted", (data) => {
+    const { chat, currentUser, answer } = data;
+    const userList = chat.users;
+
+    userList.map((user) => {
+      if (user._id === currentUser.id) return;
+      socket.in(user._id).emit("call accepted", { answer });
     });
   });
 

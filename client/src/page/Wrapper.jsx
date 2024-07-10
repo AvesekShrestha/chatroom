@@ -4,7 +4,7 @@ import Navbar from "../component/Navbar";
 
 const Wrapper = ({ children }) => {
     const location = useLocation();
-    const shouldShowNavbar = !['/login', '/register'].includes(location.pathname);
+    const shouldShowNavbar = !['/login', '/register', "/call"].includes(location.pathname);
 
     return (
         <div className="d-flex flex-column">

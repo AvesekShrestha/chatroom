@@ -1,10 +1,12 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSocket } from '../context/socket';
 
-const Register = () => {
+const Register = ({ setLoggedIn, user }) => {
     const [userFormData, setUserFormData] = useState({ userName: '', email: '', password: '' });
     const navigate = useNavigate();
+    const socket = useSocket()
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -18,6 +20,9 @@ const Register = () => {
             setUserFormData({ userName: '', email: '', password: '' });
 
             if (response.status === 200) {
+                setLoggedIn(true);
+
+                socket.emit("account creation", response.data.user)
                 navigate('/');
             }
         } catch (error) {

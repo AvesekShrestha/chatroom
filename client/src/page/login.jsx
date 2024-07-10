@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios"
 import { useNavigate } from "react-router-dom"
-import { useDispatch, useSelector } from "react-redux";
-import { setUserData } from "../store/action/userAction";
 
-const Login = () => {
+const Login = ({ setLoggedIn }) => {
     const [userEmail, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const navigate = useNavigate()
-    const dispatch = useDispatch()
 
     useEffect(() => {
         const token = localStorage.getItem("token")
@@ -18,9 +15,8 @@ const Login = () => {
     const handelOnLogin = async () => {
         try {
             const response = await axios.post("http://localhost:8000/api/v1/login", { email: userEmail, password })
-            const { _id, userName, email } = response.data.user;
             localStorage.setItem("token", response.data.token);
-            dispatch(setUserData({ id: _id, userName, email }))
+            setLoggedIn(true)
             navigate("/");
         } catch (error) {
             console.log("Erorr while login");

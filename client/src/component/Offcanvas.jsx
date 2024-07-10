@@ -4,9 +4,10 @@ import { InputGroup, Form, Button, Alert } from 'react-bootstrap';
 import { FaSearch, FaUserCircle } from 'react-icons/fa';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
-// import { useSocket } from './SocketProvider';
+import { useSocket } from '../context/socket';
 
-function SearchCanvas({ chats, updatechats, socket }) {
+
+function SearchCanvas({ chats, updatechats }) {
     const [show, setShow] = useState(false);
     const [allUsers, setAllUsers] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
@@ -14,7 +15,7 @@ function SearchCanvas({ chats, updatechats, socket }) {
     const [error, setError] = useState("");
     const [token, setToken] = useState(null)
     const [currentUser, setCurrentUser] = useState(null);
-    // const socket = useSocket()
+    const socket = useSocket()
 
 
     const handleClose = () => setShow(false);
@@ -74,6 +75,7 @@ function SearchCanvas({ chats, updatechats, socket }) {
             } else {
                 handleClose()
                 updatechats(response.data);
+                socket.emit("chat request", { chat: response.data, currentUser });
             }
         } catch (error) {
             setError(`Cannot send message to ${user[0].chatName}`);

@@ -6,6 +6,8 @@ const User = require("../models/users");
 router.post("/createChat", async (req, res) => {
   try {
     const { isGroupChat, chatName, targetUser } = req.body;
+    const currentUser = req.user.id;
+
     if (
       !targetUser ||
       typeof isGroupChat === "undefined" ||
@@ -14,27 +16,45 @@ router.post("/createChat", async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // For one-on-one chats, check if chat already exists
-    let existingChat;
+    let targetUsers = [];
+
     if (!isGroupChat) {
-      existingChat = await Chat.findOne({
+      const existingChat = await Chat.findOne({
         isGroupChat: false,
-        users: { $all: [req.user.id, targetUser[0]] },
+        users: { $all: [currentUser, targetUser[0]] },
       }).populate({
         path: "users",
         select: "userName _id email",
       });
+
       if (existingChat) {
         return res.status(200).json(existingChat);
       }
+
+      targetUsers = [targetUser[0]];
+    } else {
+      const userChats = await Chat.find({ users: currentUser }).populate(
+        "users",
+        "userName _id email"
+      );
+      const allUsers = userChats
+        .flatMap((chat) => chat.users)
+        .filter((user) => user._id.toString() !== currentUser);
+
+      const uniqueUsers = Array.from(
+        new Set(allUsers.map((user) => user._id.toString()))
+      ).map((id) => allUsers.find((user) => user._id.toString() === id));
+
+      targetUsers = uniqueUsers.map((user) => user._id);
     }
 
-    // Create new chat
     const newChat = new Chat({
       isGroupChat,
-      chatName: isGroupChat ? chatName : targetUser[0].userName,
-      groupAdmin: isGroupChat ? req.user.id : null,
-      users: [req.user.id, ...targetUser],
+      chatName: isGroupChat
+        ? chatName
+        : targetUsers.map((user) => user.userName).join(", "),
+      groupAdmin: isGroupChat ? currentUser : null,
+      users: [currentUser, ...targetUsers],
     });
 
     const savedChat = await newChat.save();
@@ -42,6 +62,7 @@ router.post("/createChat", async (req, res) => {
       path: "users",
       select: "userName _id email",
     });
+
     res.status(200).json(populatedChat);
   } catch (error) {
     console.error("Error creating chat:", error);

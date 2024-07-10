@@ -5,10 +5,10 @@ import ModalButton from "../component/Model";
 import SearchCanvas from "../component/Offcanvas";
 import MessageArea from "../component/MessageArea";
 import { FaUserCircle } from "react-icons/fa";
-import io from "socket.io-client"
+import { useSocket } from "../context/socket";
+import CallHandler from "../component/CallHandler";
 
 const Message = () => {
-  const [socket, setSocket] = useState(null)
   const [chats, setChats] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [chatSelected, setChatSelected] = useState(false);
@@ -21,6 +21,10 @@ const Message = () => {
     const savedMissedMessages = localStorage.getItem("missedMessages");
     return savedMissedMessages ? JSON.parse(savedMissedMessages) : {};
   });
+  const [offer, setOffer] = useState(null)
+  const [caller, setCaller] = useState(null);
+  const [callChat, setCallChat] = useState(null)
+  const socket = useSocket();
 
   useEffect(() => {
     localStorage.setItem("missedMessages", JSON.stringify(missedMessages));
@@ -40,16 +44,6 @@ const Message = () => {
       setChats(response.data);
     };
     fetchChats();
-
-    const socket = io("http://localhost:5000");
-    setSocket(socket)
-
-    socket.emit("setup", user)
-
-    return () => {
-      socket.disconnect()
-    }
-
   }, []);
 
   useEffect(() => {
@@ -57,25 +51,45 @@ const Message = () => {
   }, [selectedChat]);
 
   useEffect(() => {
+    const handleGroupCreated = (data) => {
+      setChats((prevChats) => [...prevChats, data]);
+    };
+
+    const handleChatRequest = async (data) => {
+      setChats((prevChats) => [...prevChats, data]);
+    };
+
+    const handleIncommingCall = async (data) => {
+      const { chat, from, offer } = data;
+      setOffer(offer);
+      setCaller(from);
+      setCallChat(chat);
+    };
+
+    const handleMessageReceived = (newMessageReceived) => {
+      const selectedChat = selectedChatRef.current;
+      if (selectedChat && selectedChat._id === newMessageReceived.chatId._id) {
+        setMessages((prevMessage) => [...prevMessage, newMessageReceived]);
+      } else {
+        setMissedMessages((prevMissedMessages) => ({
+          ...prevMissedMessages,
+          [newMessageReceived.chatId._id]: (prevMissedMessages[newMessageReceived.chatId._id] || 0) + 1,
+        }));
+      }
+      updateLatestMessage(newMessageReceived);
+    };
+
     socket?.on("message received", handleMessageReceived);
+    socket?.on("incomming call", handleIncommingCall);
+    socket?.on("chat request response", handleChatRequest);
+    socket?.on("group created", handleGroupCreated);
 
     return () => {
       socket?.off("message received", handleMessageReceived);
+      socket?.off("incomming call", handleIncommingCall);
+      socket?.off("group created", handleGroupCreated);
     };
   }, [socket]);
-
-  const handleMessageReceived = (newMessageReceived) => {
-    const selectedChat = selectedChatRef.current;
-    if (selectedChat && selectedChat._id === newMessageReceived.chatId._id) {
-      setMessages((prevMessage) => [...prevMessage, newMessageReceived]);
-    } else {
-      setMissedMessages((prevMissedMessages) => ({
-        ...prevMissedMessages,
-        [newMessageReceived.chatId._id]: (prevMissedMessages[newMessageReceived.chatId._id] || 0) + 1,
-      }));
-    }
-    updateLatestMessage(newMessageReceived);
-  };
 
   const handleOnSelectChat = async (chat) => {
     setChatSelected(true);
@@ -99,7 +113,7 @@ const Message = () => {
     } catch (error) {
       setError("Unable to load messages");
     }
-    socket.emit("join chat", chat._id);
+    socket?.emit("join chat", chat._id);
   };
 
   const updateChats = (newChat) => {
@@ -122,13 +136,14 @@ const Message = () => {
   return (
     <div className="container-fluid" style={{ height: "90vh", width: "100vw" }}>
       <div className="row h-100 no-gutters">
+        {offer && <CallHandler caller={caller} offer={offer} chat={callChat} />}
         <div className="col-3 p-0" style={{ backgroundColor: "#F8F9FA" }}>
           <div className="d-flex flex-row justify-content-between align-items-center">
             <h3>Chats</h3>
             <ModalButton chats={chats} updatechats={updateChats} />
           </div>
           <div className="w-75">
-            <SearchCanvas chats={chats} updatechats={updateChats} socket={socket} />
+            <SearchCanvas chats={chats} updatechats={updateChats} />
           </div>
           <hr />
           <div className="d-flex flex-column" style={{ height: "80vh", overflowY: "scroll" }}>
@@ -183,7 +198,6 @@ const Message = () => {
               messages={messages}
               setMessages={setMessages}
               updateLatestMessage={updateLatestMessage}
-              socket={socket}
             />
           )}
         </div>
@@ -191,5 +205,4 @@ const Message = () => {
     </div>
   );
 };
-
 export default Message;

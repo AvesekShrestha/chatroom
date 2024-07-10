@@ -4,6 +4,9 @@
   "main": "index.js",
   "author": "Avesek",
   "license": "MIT",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
